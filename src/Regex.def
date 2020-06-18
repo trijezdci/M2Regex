@@ -1,0 +1,263 @@
+(* Modula-2 Regular Expression Library
+ *
+ *  @file Regex.def
+ *  Regex interface
+ *
+ *  Modula-2 Regular Expressions
+ *
+ *  Author: Benjamin Kowarsch <trijezdci@moc.liamg>
+ *
+ *  Copyright (C) 2009 Benjamin Kowarsch. All rights reserved.
+ *
+ *  License:
+ *
+ *  Redistribution  and  use  in source  and  binary forms,  with  or  without
+ *  modification, are permitted provided that the following conditions are met
+ *
+ *  1) NO FEES may be charged for the provision of the software.  The software
+ *     may  NOT  be published  on websites  that contain  advertising,  unless
+ *     specific  prior  written  permission has been obtained.
+ *
+ *  2) Redistributions  of source code must retain the above copyright notice,
+ *     this list of conditions and the following disclaimer.
+ *
+ *  3) Redistributions  in binary form  must  reproduce  the  above  copyright
+ *     notice,  this list of conditions  and  the following disclaimer  in the
+ *     documentation and other materials provided with the distribution.
+ *
+ *  4) Neither the author's name nor the names of any contributors may be used
+ *     to endorse  or  promote  products  derived  from this software  without
+ *     specific prior written permission.
+ *
+ *  5) Where this list of conditions  or  the following disclaimer, in part or
+ *     as a whole is overruled  or  nullified by applicable law, no permission
+ *     is granted to use the software.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING,  BUT NOT LIMITED TO,  THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY  AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT  SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE  FOR  ANY  DIRECT,  INDIRECT,  INCIDENTAL,  SPECIAL,  EXEMPLARY,  OR
+ * CONSEQUENTIAL  DAMAGES  (INCLUDING,  BUT  NOT  LIMITED  TO,  PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES;  LOSS OF USE,  DATA,  OR PROFITS; OR BUSINESS
+ * INTERRUPTION)  HOWEVER  CAUSED  AND ON ANY THEORY OF LIABILITY,  WHETHER IN
+ * CONTRACT,  STRICT LIABILITY,  OR TORT  (INCLUDING NEGLIGENCE  OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,  EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *  
+ *)
+
+
+DEFINITION MODULE Regex; (*!m2pim*)
+
+(* ---------------------------------------------------------------------------
+ * Regular Expression Syntax
+ * ---------------------------------------------------------------------------
+ * Characters and character sequences with special meanings:
+ *
+ * Ignored
+ *  whitespace is ignored
+ *  control characters are ignored
+ *
+ * Alternative
+ *  |     preceding and following syntactic entities are alternative matches
+ *
+ * Inversion
+ *  ~     any character that does not match the syntactic entity that follows
+ *
+ * Range
+ *  -     specifies a range of digits or letters, eg.: 0-7, 0-9, a-Z, A-Z etc.
+ *
+ * Grouping
+ *  ( )   combines syntactic entities into a grouped syntactic entity
+ *  
+ * Quantifying
+ *  ?     the preceding syntactic entity may occur zero or one time
+ *  +     the preceding syntactic entity may occur one or more times
+ *  *     the preceding syntactic entity may occur zero or more times
+ *  {n}   the preceding syntactic entity may occur exactly n times
+ *  {n,m} the preceding syntactic entity may occur n to m times
+ *
+ * Synonyms
+ *  {start}       matches the start-of-input state
+ *  {end}         matches the end-of-input state
+ *  {any}         matches any character
+ *  {nul}         matches the null character
+ *  {sp}          matches space
+ *  {tab}         matches horizontal tab
+ *  {ws}          ( {sp} | {tab} )
+ *  {nl}          matches new line
+ *  {ret}         matches carriage return
+ *  {bar}         matches the vertical bar
+ *  {tilde}       matches the tilde
+ *  {lparen}      matches the left parenthesis
+ *  {rparen}      matches the right parenthesis
+ *  {lbrace}      matches the left curly brace
+ *  {rbrace}      matches the right curly brace
+ *  {question}    matches the question mark
+ *  {plus}        matches the plus sign
+ *  {minus}       matches the minus sign
+ *  {asterisk}    matches the asterisk
+ *  {q}           matches the single quote
+ *  {singlequote} same as {q}
+ *  {qq}          matches the double quote
+ *  {doublequote} same as {qq}
+ *  {sign}        ( {plus} | {minus} )
+ *  {bit}         ( 0|1 )
+ *  {binary}      same as {bit}
+ *  {lowerbool}   ( 0|1 | t|f | y|n )
+ *  {upperbool}   ( 0|1 | T|F | Y|N )
+ *  {bool}        ( 0|1 | t|f | y|n | T|F | Y|N ) 
+ *  {oct}         ( 0-7 )
+ *  {dec}         ( 0-9 )
+ *  {digit}       same as {dec}
+ *  {lowerhex}    ( 0-9 | a-f )
+ *  {upperhex}    ( 0-9 | A-F )
+ *  {hex}         ( 0-9 | a-f | A-F )
+ *  {loweralpha}  ( a-z )
+ *  {upperalpha}  ( A-Z )
+ *  {alpha}       ( a-z | A-Z )
+ *  {alphanum}    ( a-z | A-Z | 0-9 )
+ *  {control}     matches any control character
+ *  {printable}   matches any printable character
+ *  {punctuation} matches any printable character that is not alpha-numeric
+ *  {word}        ( {alpha}+ )
+ *  {int}         ( {digit}+ )
+ *  {real}        ( {digit}+ ((.|,){digit}+ ((e|E)({sign}{digit}+)? )? )
+ *  {identifier}  ( ( _ | {alpha} ) ( _ | {alpha} | {digit} )+ )
+ *  {aA}          matches any upper/lowercase variant of the following string
+ *  {#nn}         matches the character with the sedecimal character code nn
+ * ------------------------------------------------------------------------ *)
+
+
+(* ---------------------------------------------------------------------------
+ * Opaque type : Regex.NFA
+ * ------------------------------------------------------------------------ *)
+
+TYPE NFA; (* OPAQUE *)
+
+
+(* ---------------------------------------------------------------------------
+ * Status codes
+ * ------------------------------------------------------------------------ *)
+
+TYPE Status = (
+  success,
+  invalidExpr,
+  invalidString,
+  invalidNFA,
+  stackFull,
+  allocationFailed );
+
+
+(* ---------------------------------------------------------------------------
+ * Notification codes
+ * ---------------------------------------------------------------------------
+ * Notification codes indicate the following:
+ *
+ * o  sizeInfo          notify the number of states of a new automaton
+ * o  noMatchInfo       notify character and index at which matching failed
+ * o  illegalChar       notify illegal character and index in expression
+ * o  unknownSynonym    notify invalid synonym and index in expression
+ * o  allocationFailed  notify failed allocation while creating an automaton
+ * ------------------------------------------------------------------------ *)
+
+TYPE Notification = (
+  sizeInfo,
+  noMatchInfo,
+  illegalChar,
+  unknownSynonym,
+  allocationFailed );
+
+
+(* ---------------------------------------------------------------------------
+ * Notification Handler type
+ * ---------------------------------------------------------------------------
+ * Automatons pass the following parameters to the handler:
+ *
+ * o  notification code describing the notified event
+ * o  the character at which the event occurred
+ * o  the index at which the event occurred
+ * o  the number of states of the automaton
+ * ------------------------------------------------------------------------ *)
+
+TYPE NotificationHandler =
+    PROCEDURE ( VAR Notification, VAR CHAR, VAR CARDINAL, VAR CARDINAL );
+
+
+(* ---------------------------------------------------------------------------
+ * procedure:  Regex.New ( automaton, expr, status )
+ * ---------------------------------------------------------------------------
+ *
+ * Creates a newly allocated regular expression automaton for the regular ex-
+ * pression passed in <expr> and passes it back in <automaton>. The procedure
+ * fails and asses NIL in <automaton> if the length of the regular expression
+ * string passed in <expr> is zero or if memory could not be allocated.
+ *
+ * The status of the operation is passed back in <status>.
+ * ------------------------------------------------------------------------ *)
+
+PROCEDURE New
+  ( VAR automaton : NFA; expr : ARRAY OF CHAR; VAR status : Status );
+
+
+(* ---------------------------------------------------------------------------
+ * function:  Regex.installNotificationHandler( automaton, handler )
+ * ---------------------------------------------------------------------------
+ *
+ * Installs procedure <handler> as notification handler for regular expression
+ * automaton <automaton>.  If a notification handler is installed,  the  auto-
+ * maton calls the handler  whenever  a  notifiable event  occurs.  Notifiable
+ * events are either informational or warnings or errors.  By default no noti-
+ * fication handler is installed.
+ *
+ * A notification handler may be uninstalled by passing in NIL for <handler>.
+ * ------------------------------------------------------------------------ *)
+
+PROCEDURE installNotificationHandler
+  ( automaton : NFA; handler : NotificationHandler );
+
+
+(* ---------------------------------------------------------------------------
+ * function:  Regex.match( automaton, str, status )
+ * ---------------------------------------------------------------------------
+ *
+ * Matches string <str> against regular expression automaton <automaton>.  Re-
+ * turns TRUE if <str> matches,  returns FALSE  otherwise.  The function fails
+ * and returns FALSE if NIL is passed in for <re>.
+ *
+ * The status of the operation is passed back in <status>.
+ * ------------------------------------------------------------------------ *)
+
+PROCEDURE match
+  ( automaton : NFA; str : ARRAY OF CHAR; VAR status : Status ) : BOOLEAN;
+
+
+(* ---------------------------------------------------------------------------
+ * function:  Regex.instantMatch( expr, str, handler, status )
+ * ---------------------------------------------------------------------------
+ *
+ * Creates a regular expression automaton for regular expression <expr> on the
+ * fly,  matches string <str> against <expr>,  returns the result and disposes
+ * of the automaton.  Returns TRUE if <str> matches,  FALSE otherwise.
+ *
+ * The status of the operation is passed back in <status>.
+ * ------------------------------------------------------------------------ *)
+
+PROCEDURE instantMatch
+  ( expr, str : ARRAY OF CHAR;
+    handler : NotificationHandler;
+    VAR status : Status ) : BOOLEAN;
+
+
+(* ---------------------------------------------------------------------------
+ * procedure:  Regex.Dispose( automaton )
+ * ---------------------------------------------------------------------------
+ *
+ * Disposes of regular expression <automaton> and passes NIL in <automaton>.
+ * ------------------------------------------------------------------------ *)
+
+PROCEDURE Dispose ( VAR automaton : NFA );
+
+
+END Regex.
